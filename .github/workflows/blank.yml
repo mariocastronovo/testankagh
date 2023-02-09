@@ -1,0 +1,51 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+ 
+  action-up:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: veertuinc/anka-actions-up@v1
+        id: action-up
+        with:
+          gh-pat: ${{ secrets.PAT }}
+          template-id: 'dca9d7a4-c680-47a0-88ce-6bb0107e6cc2'
+          controller-url: 'http://10.52.148.148/'
+    outputs:
+      action-id: ${{ steps.action-up.outputs.action-id }}
+
+  inside_vm_job:
+    needs: action-up
+    runs-on: [ self-hosted, "${{ needs.action-up.outputs.action-id }}" ]
+    steps:
+      - name: Inside VM Job
+        id: inside_vm_job
+        run: |
+          echo "running on runner inside of VM (${{ needs.action-up.outputs.action-id }})"
+          echo "user: $USER"
+          echo "home: $HOME"
+          
+  action_down:
+    if: always()
+    needs: [ action-up, inside_vm_job ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: veertuinc/anka-actions-down@v1
+        with:
+          action-id: ${{ needs.action-up.outputs.action-id }}
+          gh-pat: ${{ secrets.PAT }}
+          controller-url: 'http://10.52.148.148'
